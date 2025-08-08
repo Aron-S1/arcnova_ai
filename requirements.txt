@@ -1,0 +1,10 @@
+streamlit
+pandas
+numpy
+tensorflow
+xgboost
+joblib
+shap
+google-generativeai
+qiskit
+matplotlib
