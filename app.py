@@ -79,77 +79,57 @@ def load_scaler():
         return joblib.load(SCALER_PATH)
     except Exception:
         return None
-# ------------------- 🌌 GEMINI + SHAP CELESTIAL EXPLAINER -------------------
+# ===================== LEGENDARY GEMINI + SHAP SECTION =====================
+if use_gemini or show_shap:
+    shap_values_for_input = None
+    impacts_small = {}
 
-import shap
-import google.generativeai as genai
+    # Try SHAP computation first
+    if show_shap and xgb_model is not None and shap is not None:
+        st.markdown("## 🔍 SHAP Feature Importance")
+        explainer, expl_err = build_shap_explainer_safe()
+        if explainer is not None:
+            try:
+                sv = explainer(x_input)
+                shap_values_for_input = sv
+                # Convert impacts to dict
+                impacts_small = dict(zip(FEATURE_NAMES, sv.values[0]))
+                # Display SHAP plot
+                shap.plots.bar(sv, show=False)
+                st.pyplot(bbox_inches="tight")
+            except Exception as e:
+                st.warning(f"SHAP computation failed: {e}")
+        else:
+            st.info(f"SHAP unavailable: {expl_err}")
+    elif show_shap:
+        st.info("SHAP skipped — model or package missing.")
 
-# Sidebar controls for Gemini and SHAP
-enable_gemini = st.sidebar.checkbox("Enable Gemini explanations", value=False)
-show_shap = st.sidebar.checkbox("Show SHAP feature importance", value=False)
+    # Gemini Explanation
+    if use_gemini:
+        st.markdown("## 🧠 Gemini Natural-Language Explanation")
+        if not gemini_api_key:
+            st.warning("Gemini API key missing. Add it in Streamlit secrets or sidebar.")
+        else:
+            try:
+                genai.configure(api_key=gemini_api_key)
+                gemini_model = genai.GenerativeModel("gemini-1.5-flash")
+                prompt = f"""
+                You are a senior fusion physicist and ML researcher.
+                Model prediction score: {fusion_score if fusion_score is not None else 'N/A'}
+                Prediction meaning: {"Ignition likely" if fusion_score and fusion_score > 0.5 else "No ignition likely"}
+                Model used: {engine}
+                Input features: {json.dumps(full_df.to_dict(orient='records')[0], indent=2)}
+                SHAP impacts: {json.dumps(impacts_small, indent=2) if impacts_small else "Not available"}
 
-# API Key for Gemini (from Streamlit secrets or direct input)
-gemini_api_key = st.secrets.get("GEMINI_API_KEY", None)
-if not gemini_api_key:
-    gemini_api_key = st.sidebar.text_input("Enter Gemini API Key", type="password")
-
-# Safe container for explanations
-gemini_explanation = None
-shap_values_for_input = None
-
-# Only run SHAP + Gemini if predictions were made
-if 'pred_prob' in locals() and (enable_gemini or show_shap):
-
-    # Try SHAP explanation for XGBoost
-    if xgb_model is not None and scaler is not None:
-        try:
-            explainer = shap.TreeExplainer(xgb_model)
-            shap_values_for_input = explainer.shap_values(scaled_input_array)
-
-            if show_shap:
-                st.subheader("🔍 Feature Importance (SHAP)")
-                shap_fig = shap.force_plot(
-                    explainer.expected_value, 
-                    shap_values_for_input[0], 
-                    pd.DataFrame(scaled_input_array, columns=feature_columns),
-                    matplotlib=True
-                )
-                st.pyplot(shap_fig)
-        except Exception as e:
-            st.warning(f"⚠️ SHAP explanation unavailable: {e}")
-    else:
-        st.info("ℹ️ SHAP skipped — XGB model or scaler missing.")
-
-    # Gemini explanation block
-    if enable_gemini and gemini_api_key:
-        try:
-            genai.configure(api_key=gemini_api_key)
-            model = genai.GenerativeModel("gemini-1.5-flash")
-
-            # Create context prompt for Gemini
-            prompt = f"""
-            You are an AI explainability assistant.
-            Model prediction score: {pred_prob:.2f}
-            Prediction meaning: {"Ignition likely" if pred_prob > 0.5 else "No ignition likely"}
-            Model type used: {model_used}
-            Features given: {dict(zip(feature_columns, scaled_input_array[0].tolist()))}
-            SHAP values (if available): {shap_values_for_input.tolist() if shap_values_for_input is not None else "Not available"}
-
-            Explain in plain English what this prediction means, the top influencing factors,
-            and any advice for improving the outcome if needed. Keep it concise but insightful.
-            """
-
-            response = model.generate_content(prompt)
-            gemini_explanation = response.text
-            st.subheader("🧠 Gemini's Natural Language Explanation")
-            st.write(gemini_explanation)
-
-        except Exception as e:
-            st.error(f"Gemini explanation failed: {e}")
-    elif enable_gemini:
-        st.warning("⚠️ Gemini API key missing. Add it in Streamlit secrets or sidebar.")
-
-# --------------------------------------------------------------------------
+                Write:
+                1. A concise explanation for a technical audience.
+                2. A 2-sentence operational summary.
+                3. Three actionable recommendations to improve ignition probability.
+                """
+                gemini_response = gemini_model.generate_content(prompt)
+                st.write(gemini_response.text)
+            except Exception as e:
+                st.error(f"Gemini explanation failed: {e}")
 
                 
 
