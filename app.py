@@ -11,6 +11,8 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 from pathlib import Path
+# Default flags
+show_shap = False
 
 # Optional imports
 try:
