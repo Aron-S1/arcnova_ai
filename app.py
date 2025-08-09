@@ -81,6 +81,15 @@ def load_scaler():
         return None
 
 # ---------------- GEMINI ----------------
+# Default to None so Gemini step won't break
+shap_outputs_for_input = None
+
+if show_shap and xgb_model is not None and scaler is not None:
+    try:
+        explainer = shap.TreeExplainer(xgb_model)
+        shap_outputs_for_input = explainer.shap_values(scaled_input_array)
+    except Exception as e:
+        st.error(f"SHAP explanation failed: {e}")
 def gemini_configure():
     if not GEMINI_AVAILABLE:
         return False, "Gemini not installed"
@@ -413,7 +422,17 @@ with st.expander("🔧 Debug / Admin Tools (for developer use)", expanded=False)
             scaled_vec = transform_input_df(full_df)
             st.write("**Scaled vector (fed to models):**")
             st.write(scaled_vec)
-    
+    # --- Final Failsafe ---
+try:
+    if 'shap_outputs_for_input' not in locals():
+        shap_outputs_for_input = None
+    if 'scaled_input_array' not in locals():
+        scaled_input_array = None
+    if 'pred_prob' not in locals():
+        pred_prob = None
+    st.caption("✅ ArcNova Celestial Mode — All systems closed gracefully.")
+except Exception as e:
+    st.error(f"Finalization error: {e}")
         
 
     
