@@ -201,26 +201,36 @@ def hybrid_decision(x_input, xgb_model, lstm_model):
         return xgb_score, "XGBoost", None, xgb_score
     elif lstm_score is not None:
         return lstm_score, "LSTM", lstm_score, None
-    return None, "None", None, None
-
+    return None, "None", None
+\begin{lstlisting}[language=Python]
 # ---------------- SIDEBAR ----------------
 st.sidebar.header("Control Panel")
+
 with st.sidebar.form("controls"):
+    # --- Core model sliders ---
     temp_ui = st.slider("Plasma Temp (M K)", 50, 400, 150, step=5)
     press_ui = st.slider("Pressure (atm)", 1.0, 10.0, 3.0, step=0.1)
     field_ui = st.slider("Magnetic Field (T)", 1.0, 12.0, 5.0, step=0.1)
     dens_ui = st.slider("Fuel Density (g/cm³)", 0.1, 3.0, 1.0, step=0.01)
     conf_ui = st.slider("Confinement Time (s)", 0.5, 60.0, 10.0, step=0.5)
-    model_choice = st.selectbox("AI Engine", ["Hybrid Decision Core", "LSTM", "XGBoost"])
-    use_gemini = st.checkbox("Enable Gemini explanations", value=True)
-    use_quantum = st.checkbox("Enable Quantum Mode (Qiskit)", value=False)
-    submitted = st.form_submit_button("Run Prediction & Explain")
 
-colA, colB, colC = st.columns(3)
-colA.metric("Run timestamp", datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S UTC"))
-colB.metric("Gemini available", "Yes" if GEMINI_AVAILABLE else "No")
-colC.metric("Qiskit available", "Yes" if QISKIT_AVAILABLE else "No")
-st.markdown("---")
+    # --- Engine choice ---
+    model_choice = st.selectbox("AI Engine", ["Hybrid Decision Core", "LSTM", "XGBoost"])
+
+    # --- Extra features ---
+    use_gemini = st.checkbox("Enable Gemini explanations", value=True)
+    show_shap = st.checkbox("Show SHAP feature importance", value=False)
+    use_quantum = st.checkbox("Enable Quantum Mode (Qiskit)", value=False)
+
+    # --- API Key handling ---
+    gemini_api_key = st.secrets.get("GEMINI_API_KEY", None)
+    if not gemini_api_key:
+        gemini_api_key = st.text_input("Enter Gemini API Key", type="password")
+
+    # --- Submit ---
+    submitted = st.form_submit_button("Run Prediction & Explain")
+\end{lstlisting}
+
 # ---------------- Part 2: Prediction, XAI, Gemini, Export (Paste below Part 1) ----------------
 
 # Load models & scaler (non-fatal)
