@@ -11,6 +11,8 @@ import pandas as pd
 import streamlit as st
 from datetime import datetime
 from pathlib import Path
+use_gemini = False
+show_shap = False
 # Default flags
 show_shap = False
 
@@ -80,6 +82,10 @@ def load_scaler():
     except Exception:
         return None
 # ===================== LEGENDARY GEMINI + SHAP SECTION =====================
+with st.sidebar.form("controls"):
+    ...
+    use_gemini = st.checkbox("Enable Gemini explanations", value=True)
+    ...
 if use_gemini or show_shap:
     shap_values_for_input = None
     impacts_small = {}
