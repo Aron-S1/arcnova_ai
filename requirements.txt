@@ -1,10 +1,19 @@
+# Core app
 streamlit
-pandas
 numpy
-tensorflow
-xgboost
+pandas
 joblib
+scikit-learn
+xgboost
+
+# LSTM support
+tensorflow
+
+# Explainability
 shap
+
+# Gemini AI client
 google-generativeai
+
+# Optional quantum conceptual hints
 qiskit
-matplotlib
