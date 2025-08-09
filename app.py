@@ -202,7 +202,8 @@ def hybrid_decision(x_input, xgb_model, lstm_model):
     elif lstm_score is not None:
         return lstm_score, "LSTM", lstm_score, None
     return None, "None", None
-\begin{lstlisting}[language=Python]
+    
+
 # ---------------- SIDEBAR ----------------
 st.sidebar.header("Control Panel")
 
@@ -227,9 +228,9 @@ with st.sidebar.form("controls"):
     if not gemini_api_key:
         gemini_api_key = st.text_input("Enter Gemini API Key", type="password")
 
-    # --- Submit ---
+    # --- Submit button ---
     submitted = st.form_submit_button("Run Prediction & Explain")
-\end{lstlisting}
+
 
 # ---------------- Part 2: Prediction, XAI, Gemini, Export (Paste below Part 1) ----------------
 
