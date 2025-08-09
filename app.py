@@ -80,63 +80,42 @@ def load_scaler():
     except Exception:
         return None
 
-# ===================== GEMINI NATURAL LANGUAGE EXPLANATION ===================== #
-import os
+# ---------------- Gemini + SHAP Safe Handler ----------------
+# Default placeholder so Gemini doesn't crash
+shap_outputs_for_input = None
 
-# Initialize Gemini API safely
-try:
-    import google.generativeai as genai
-    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-
-    if GEMINI_API_KEY:
-        genai.configure(api_key=GEMINI_API_KEY)
-        gemini_client = genai.GenerativeModel("gemini-1.5-pro")
-    else:
-        gemini_client = None
-        st.warning("⚠️ Gemini API key missing — explanations will use fallback mode.")
-except Exception as e:
-    gemini_client = None
-    st.error(f"❌ Gemini initialization failed: {e}")
-
-# Function to get Gemini explanation with hardcore fallback
-def get_gemini_explanation(input_data, model_scores, shap_data=None):
-    """
-    Generate natural-language explanation using Gemini.
-    Falls back to a local explanation if Gemini is unavailable.
-    """
+if show_shap and xgb_model is not None and scaler is not None:
     try:
-        # Prepare the prompt
-        prompt = f"""
-        You are ArcNova Celestial Intelligence. Explain this fusion ignition prediction in an engaging,
-        clear, and technically sound way. Use simple analogies if needed.
-
-        Prediction Inputs: {input_data}
-        Model Scores: {model_scores}
-        SHAP Insights: {shap_data if shap_data is not None else "No SHAP data available"}
-        """
-
-        if gemini_client:
-            response = gemini_client.generate_content(prompt)
-            if hasattr(response, "text"):
-                return response.text.strip()
-            elif isinstance(response, str):
-                return response.strip()
-            else:
-                return "⚠️ Gemini returned an unexpected format."
-        else:
-            # Fallback explanation
-            return (
-                "📝 **Fallback Analysis:** Based on the given plasma conditions and engine scores, "
-                "ignition likelihood is evaluated using the hybrid AI core. Without Gemini, "
-                "this is a purely local interpretation."
-            )
-
+        explainer = shap.TreeExplainer(xgb_model)
+        shap_outputs_for_input = explainer.shap_values(scaled_input_array)
     except Exception as e:
-        return (
-            f"⚠️ Gemini explanation failed with error: {e}. "
-            "Using fallback mode: The AI considered plasma temperature, magnetic field, "
-            "fuel density, and confinement time to estimate ignition probability."
+        st.warning(f"SHAP explanation unavailable, fallback mode: {e}")
+        shap_outputs_for_input = None
+
+# Gemini natural-language explanation
+if enable_gemini and gemini_api_key:
+    try:
+        gemini_client = genai.Client(api_key=gemini_api_key)
+        prompt = f"""
+        You are an AI fusion expert. Given the model results:
+        Fusion Score: {fusion_score:.3f}
+        LSTM Score: {lstm_score:.3f}
+        XGB Score: {xgb_score:.3f}
+        Engine: {engine_type}
+        SHAP outputs: {shap_outputs_for_input if shap_outputs_for_input is not None else 'Not available'}
+        Provide a concise, expert explanation in natural language.
+        """
+        gemini_response = gemini_client.models.generate_content(
+            model="gemini-pro",
+            contents=prompt
         )
+        st.markdown(f"**Gemini Explanation:** {gemini_response.text}")
+    except Exception as e:
+        st.error(f"Gemini step failed: {e}")
+else:
+    st.info("Enable Gemini explanations from the control panel to see AI commentary.")
+
+                
 
 # ===================== STREAMLIT UI HOOK ===================== #
 with st.expander("📜 Gemini Natural-Language Explanation", expanded=True):
