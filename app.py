@@ -79,41 +79,77 @@ def load_scaler():
         return joblib.load(SCALER_PATH)
     except Exception:
         return None
+# ------------------- 🌌 GEMINI + SHAP CELESTIAL EXPLAINER -------------------
 
-# ---------------- Gemini + SHAP Safe Handler ----------------
-# Default placeholder so Gemini doesn't crash
-shap_outputs_for_input = None
+import shap
+import google.generativeai as genai
 
-if show_shap and xgb_model is not None and scaler is not None:
-    try:
-        explainer = shap.TreeExplainer(xgb_model)
-        shap_outputs_for_input = explainer.shap_values(scaled_input_array)
-    except Exception as e:
-        st.warning(f"SHAP explanation unavailable, fallback mode: {e}")
-        shap_outputs_for_input = None
+# Sidebar controls for Gemini and SHAP
+enable_gemini = st.sidebar.checkbox("Enable Gemini explanations", value=False)
+show_shap = st.sidebar.checkbox("Show SHAP feature importance", value=False)
 
-# Gemini natural-language explanation
-if enable_gemini and gemini_api_key:
-    try:
-        gemini_client = genai.Client(api_key=gemini_api_key)
-        prompt = f"""
-        You are an AI fusion expert. Given the model results:
-        Fusion Score: {fusion_score:.3f}
-        LSTM Score: {lstm_score:.3f}
-        XGB Score: {xgb_score:.3f}
-        Engine: {engine_type}
-        SHAP outputs: {shap_outputs_for_input if shap_outputs_for_input is not None else 'Not available'}
-        Provide a concise, expert explanation in natural language.
-        """
-        gemini_response = gemini_client.models.generate_content(
-            model="gemini-pro",
-            contents=prompt
-        )
-        st.markdown(f"**Gemini Explanation:** {gemini_response.text}")
-    except Exception as e:
-        st.error(f"Gemini step failed: {e}")
-else:
-    st.info("Enable Gemini explanations from the control panel to see AI commentary.")
+# API Key for Gemini (from Streamlit secrets or direct input)
+gemini_api_key = st.secrets.get("GEMINI_API_KEY", None)
+if not gemini_api_key:
+    gemini_api_key = st.sidebar.text_input("Enter Gemini API Key", type="password")
+
+# Safe container for explanations
+gemini_explanation = None
+shap_values_for_input = None
+
+# Only run SHAP + Gemini if predictions were made
+if 'pred_prob' in locals() and (enable_gemini or show_shap):
+
+    # Try SHAP explanation for XGBoost
+    if xgb_model is not None and scaler is not None:
+        try:
+            explainer = shap.TreeExplainer(xgb_model)
+            shap_values_for_input = explainer.shap_values(scaled_input_array)
+
+            if show_shap:
+                st.subheader("🔍 Feature Importance (SHAP)")
+                shap_fig = shap.force_plot(
+                    explainer.expected_value, 
+                    shap_values_for_input[0], 
+                    pd.DataFrame(scaled_input_array, columns=feature_columns),
+                    matplotlib=True
+                )
+                st.pyplot(shap_fig)
+        except Exception as e:
+            st.warning(f"⚠️ SHAP explanation unavailable: {e}")
+    else:
+        st.info("ℹ️ SHAP skipped — XGB model or scaler missing.")
+
+    # Gemini explanation block
+    if enable_gemini and gemini_api_key:
+        try:
+            genai.configure(api_key=gemini_api_key)
+            model = genai.GenerativeModel("gemini-1.5-flash")
+
+            # Create context prompt for Gemini
+            prompt = f"""
+            You are an AI explainability assistant.
+            Model prediction score: {pred_prob:.2f}
+            Prediction meaning: {"Ignition likely" if pred_prob > 0.5 else "No ignition likely"}
+            Model type used: {model_used}
+            Features given: {dict(zip(feature_columns, scaled_input_array[0].tolist()))}
+            SHAP values (if available): {shap_values_for_input.tolist() if shap_values_for_input is not None else "Not available"}
+
+            Explain in plain English what this prediction means, the top influencing factors,
+            and any advice for improving the outcome if needed. Keep it concise but insightful.
+            """
+
+            response = model.generate_content(prompt)
+            gemini_explanation = response.text
+            st.subheader("🧠 Gemini's Natural Language Explanation")
+            st.write(gemini_explanation)
+
+        except Exception as e:
+            st.error(f"Gemini explanation failed: {e}")
+    elif enable_gemini:
+        st.warning("⚠️ Gemini API key missing. Add it in Streamlit secrets or sidebar.")
+
+# --------------------------------------------------------------------------
 
                 
 
