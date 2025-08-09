@@ -80,39 +80,87 @@ def load_scaler():
     except Exception:
         return None
 
-# ---------------- GEMINI ----------------
-# Default to None so Gemini step won't break
-shap_outputs_for_input = None
 
-if show_shap and xgb_model is not None and scaler is not None:
-    try:
-        explainer = shap.TreeExplainer(xgb_model)
-        shap_outputs_for_input = explainer.shap_values(scaled_input_array)
-    except Exception as e:
-        st.error(f"SHAP explanation failed: {e}")
-def gemini_configure():
-    if not GEMINI_AVAILABLE:
-        return False, "Gemini not installed"
-    key = os.getenv("GEMINI_API_KEY") or st.secrets.get("GEMINI_API_KEY")
-    if not key:
-        return False, "No GEMINI_API_KEY found"
-    try:
-        genai.configure(api_key=key)
-        return True, "Gemini configured"
-    except Exception as e:
-        return False, str(e)
+    # ===================== GEMINI NATURAL LANGUAGE EXPLANATION ===================== #
+import os
 
-def gemini_explain(prompt):
-    if not GEMINI_AVAILABLE:
-        return None, "Gemini not installed"
-    ok, msg = gemini_configure()
-    if not ok:
-        return None, msg
+# Initialize Gemini API safely
+try:
+    import google.generativeai as genai
+    GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+
+    if GEMINI_API_KEY:
+        genai.configure(api_key=GEMINI_API_KEY)
+        gemini_client = genai.GenerativeModel("gemini-1.5-pro")
+    else:
+        gemini_client = None
+        st.warning("⚠️ Gemini API key missing — explanations will use fallback mode.")
+except Exception as e:
+    gemini_client = None
+    st.error(f"❌ Gemini initialization failed: {e}")
+
+# Function to get Gemini explanation with hardcore fallback
+def get_gemini_explanation(input_data, model_scores, shap_data=None):
+    """
+    Generate natural-language explanation using Gemini.
+    Falls back to a local explanation if Gemini is unavailable.
+    """
     try:
-        resp = genai.generate_text(model="gemini-pro", prompt=prompt, max_output_tokens=512, temperature=0.2)
-        return getattr(resp, "text", str(resp)), None
+        # Prepare the prompt
+        prompt = f"""
+        You are ArcNova Celestial Intelligence. Explain this fusion ignition prediction in an engaging,
+        clear, and technically sound way. Use simple analogies if needed.
+
+        Prediction Inputs: {input_data}
+        Model Scores: {model_scores}
+        SHAP Insights: {shap_data if shap_data is not None else "No SHAP data available"}
+        """
+
+        if gemini_client:
+            response = gemini_client.generate_content(prompt)
+            if hasattr(response, "text"):
+                return response.text.strip()
+            elif isinstance(response, str):
+                return response.strip()
+            else:
+                return "⚠️ Gemini returned an unexpected format."
+        else:
+            # Fallback explanation
+            return (
+                "📝 **Fallback Analysis:** Based on the given plasma conditions and engine scores, "
+                "ignition likelihood is evaluated using the hybrid AI core. Without Gemini, "
+                "this is a purely local interpretation."
+            )
+
     except Exception as e:
-        return None, str(e)
+        return (
+            f"⚠️ Gemini explanation failed with error: {e}. "
+            "Using fallback mode: The AI considered plasma temperature, magnetic field, "
+            "fuel density, and confinement time to estimate ignition probability."
+        )
+
+# ===================== STREAMLIT UI HOOK ===================== #
+with st.expander("📜 Gemini Natural-Language Explanation", expanded=True):
+    if st.session_state.get("enable_gemini", False):
+        explanation_text = get_gemini_explanation(
+            input_data={
+                "temperature": temp,
+                "pressure": pressure_val,
+                "magnetic_field_strength": field_strength,
+                "fuel_density": density_val,
+                "confinement_time": confinement
+            },
+            model_scores={
+                "fusion_score": pred_prob if 'pred_prob' in locals() else None,
+                "engine": model_used if 'model_used' in locals() else None,
+                "lstm_score": locals().get("lstm_score", None),
+                "xgb_score": locals().get("xgb_score", None)
+            },
+            shap_data=shap_outputs_for_input
+        )
+        st.markdown(explanation_text)
+    else:
+        st.info("🔹 Enable Gemini explanations from the control panel to see AI commentary.")
 
 # ---------------- HELPERS ----------------
 def build_feature_vector(ui_vals, scaler=None):
