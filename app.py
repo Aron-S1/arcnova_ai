@@ -289,31 +289,49 @@ def safe_shap_explain(x_input, feature_names):
         return None, f"shap error: {e}"
 
 # ---------------- Gemini helper (safe) ----------------
-def gemini_generate(prompt, model_name="gemini-1.5-proto"):
+def gemini_generate(prompt, model_name="gemini-1.5-flash"):
+    """
+    Unified Gemini client wrapper — works with both old and new google-generativeai APIs.
+    Falls back gracefully without crashing.
+    """
     if not GEMINI_CLIENT or genai is None:
         return None, "Gemini client not installed"
-    # read key from secrets or env
+
+    # Get API key
     gemini_key = st.secrets.get("GEMINI_API_KEY", None) or os.getenv("GEMINI_API_KEY")
     if not gemini_key:
         return None, "Gemini API key missing (set GEMINI_API_KEY in Streamlit Secrets or env)"
+
     try:
         genai.configure(api_key=gemini_key)
-        # modern client varies; we try common safe wrapper
-        # try generate_text -> text attribute, else try generate
+
+        # Try NEW API first (post-May 2024 versions)
         try:
-            resp = genai.generate_text(model=model_name, prompt=prompt, max_output_tokens=512, temperature=0.2)
-            text = getattr(resp, "text", str(resp))
-            return text, None
+            if hasattr(genai, "GenerativeModel"):
+                model = genai.GenerativeModel(model_name)
+                resp = model.generate_content(prompt)
+                if hasattr(resp, "text"):
+                    return resp.text, None
+                elif hasattr(resp, "candidates"):
+                    # Some versions store output in candidates
+                    return resp.candidates[0].content.parts[0].text, None
+                else:
+                    return str(resp), None
         except Exception:
-            # fallback to alternate API (older clients)
-            try:
-                r2 = genai.create_response(model=model_name, input=prompt)
-                text = r2.output_text if hasattr(r2, "output_text") else str(r2)
-                return text, None
-            except Exception as e:
-                return None, f"Gemini call error: {e}"
+            pass
+
+        # Try OLD API next
+        try:
+            if hasattr(genai, "generate_text"):
+                resp = genai.generate_text(model=model_name, prompt=prompt,
+                                           max_output_tokens=512, temperature=0.2)
+                return getattr(resp, "text", str(resp)), None
+        except Exception:
+            pass
+
+        return None, "Gemini API call methods not supported by this version"
     except Exception as e:
-        return None, f"Gemini config error: {e}"
+        return None, f"Gemini config/call error: {e}"
 
 # ---------------- Execution: when form submitted ----------------
 if submit_button:
