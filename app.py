@@ -406,6 +406,3 @@ index 537d1e123c12e1991e2b72ce6f78a82659c9efc9..e6362a1ae05d1ea033d2b643e7801af7
                  except Exception:
                      st.info("SHAP bar plot not renderable in this environment.")
              except Exception as e:
- 
-EOF
-)
