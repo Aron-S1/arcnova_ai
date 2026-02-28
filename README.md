@@ -71,6 +71,3 @@ index 1284536332205a805216d16e36638fad10dc8a7e..3eede2d5c71f2f3a52ead875658ff3c4
 +- and, ideally, `X_train_mean.json` containing training feature names/defaults.
 +
 +Without those, the app uses safe fallbacks intended for robustness over strict scientific fidelity.
- 
-EOF
-)
