@@ -1,6 +1,5 @@
 # arcnova_ai
- (cd "$(git rev-parse --show-toplevel)" && git apply --3way <<'EOF' 
-diff --git a/README.md b/README.md
+ diff --git a/README.md b/README.md
 index 1284536332205a805216d16e36638fad10dc8a7e..3eede2d5c71f2f3a52ead875658ff3c4f349abd6 100644
 --- a/README.md
 +++ b/README.md
