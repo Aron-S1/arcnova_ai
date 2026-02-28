@@ -1,3 +1,10 @@
+# from your repo root
+git fetch --all
+git checkout 0aa345a -- app.py README.md
+python -m py_compile app.py
+git add app.py README.md
+git commit -m "Restore clean app.py and README (remove diff markers)"
+git push
 # arcnova_ai
 +ArcNova AI is a Streamlit application for fusion ignition scenario scoring using a hybrid inference path:
 +
