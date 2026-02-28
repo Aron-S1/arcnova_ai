@@ -1,4 +1,3 @@
-```python
 # ArcNova — Celestial Mode
 
 shap_summary = top5 if 'top5' in locals() else {}
