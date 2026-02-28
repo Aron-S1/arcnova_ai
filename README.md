@@ -1,7 +1,4 @@
 # arcnova_ai
- e
-+# ArcNova AI
-+
 +ArcNova AI is a Streamlit application for fusion ignition scenario scoring using a hybrid inference path:
 +
 +- XGBoost classifier (`arcnova_xgb_model.joblib`)
