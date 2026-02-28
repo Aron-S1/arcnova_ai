@@ -1,11 +1,5 @@
 # arcnova_ai
- diff --git a/README.md b/README.md
-index 1284536332205a805216d16e36638fad10dc8a7e..3eede2d5c71f2f3a52ead875658ff3c4f349abd6 100644
---- a/README.md
-+++ b/README.md
-@@ -1 +1,64 @@
--# arcnova_ai
-\ No newline at end of file
+ e
 +# ArcNova AI
 +
 +ArcNova AI is a Streamlit application for fusion ignition scenario scoring using a hybrid inference path:
