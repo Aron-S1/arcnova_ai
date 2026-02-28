@@ -1,8 +1,4 @@
-diff --git a/app.py b/app.py
-index 537d1e123c12e1991e2b72ce6f78a82659c9efc9..e6362a1ae05d1ea033d2b643e7801af709c61ad8 100644
---- a/app.py
-+++ b/app.py
-@@ -1,34 +1,32 @@
+
  # =================== ArcNova — Celestial Mode (Part A) ===================
  # Paste Part A first into app.py
  # Modern, defensive Streamlit UI — prepares app, loads resources safely.
