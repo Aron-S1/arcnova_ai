@@ -100,4 +100,3 @@ with st.expander("Simulation Configuration"):
     st.selectbox("Boundary Condition", ["Reflecting", "Absorbing", "Periodic"])
 
 st.info("End of ArcNova — Celestial Mode. Experiment responsibly and prioritize safety.")
-```
